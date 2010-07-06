@@ -81,6 +81,7 @@ instance Functor CF where
 -- that all the partial numerators are 1.
 asCF  :: Fractional a => CF a -> (a, [a])
 asCF (CF  b0 cf) = (b0, cf)
+asCF (GCF b0 []) = (b0, [])
 asCF (GCF b0 cf) = (b0, zipWith (*) bs cs)
     where
         (a:as, bs) = unzip cf
@@ -289,4 +290,5 @@ modifiedLentz z orig
 -- |Euler's formula for computing @sum (map product (inits xs))@.  Successive
 -- convergents of the resulting 'CF' are successive partial sums in the series.
 sumPartialProducts :: Num a => [a] -> CF a
+sumPartialProducts [] = cf 0 []
 sumPartialProducts (x:xs) = gcf 0 ((x,1):[(negate x, 1 + x) | x <- xs])
