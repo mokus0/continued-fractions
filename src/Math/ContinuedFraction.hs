@@ -46,7 +46,7 @@ data CF a
 -- partial denominators in its canonical form, which is the form 
 -- where all the partial numerators are 1.
 -- 
--- @cf a [b,c,d]@ corresponds to @a + (b / (1 + (c / (1 + d))))@,
+-- @cf a [b,c,d]@ corresponds to @a + (b \/ (1 + (c \/ (1 + d))))@,
 -- or to @GCF a [(1,b),(1,c),(1,d)]@.
 cf :: a -> [a] -> CF a
 cf = CF
@@ -55,7 +55,7 @@ cf = CF
 -- numerators and its partial denominators.
 --
 -- @gcf b0 [(a1,b1), (a2,b2), (a3,b3)]@ corresponds to
--- @b0 + (a1 / (b1 + (a1 / (b1 + (a2 / (b2 + (a3 / b3)))))))@
+-- @b0 + (a1 \/ (b1 + (a2 \/ (b2 + (a3 \/ b3)))))@
 gcf :: a -> [(a,a)] -> CF a
 gcf = GCF
 
@@ -92,12 +92,57 @@ asGCF :: Num a => CF a -> (a,[(a,a)])
 asGCF (CF  b0  cf) = (b0, [(1, b) | b <- cf])
 asGCF (GCF b0 gcf) = (b0, takeWhile ((/=0).fst) gcf)
 
--- |Truncate a CF to the specified number of partial numerators and denominators.
+-- |Truncate a 'CF' to the specified number of partial numerators and denominators.
 truncateCF :: Int -> CF a -> CF a
 truncateCF n (CF  b0 ab) = CF  b0 (take n ab)
 truncateCF n (GCF b0 ab) = GCF b0 (take n ab)
 
--- |Computes the even and odd parts, respectively, of a 'CF'.
+-- |Apply an equivalence transformation, multiplying each partial denominator 
+-- with the corresponding element of the supplied list and transforming 
+-- subsequent partial numerators and denominators as necessary.  If the list
+-- is too short, the rest of the 'CF' will be unscaled.
+equiv :: Num a => [a] -> CF a -> CF a
+equiv cs orig
+    = gcf b0 (zip as' bs')
+    where
+        (b0, terms) = asGCF orig
+        (as,bs) = unzip terms
+        
+        as' = zipWith (*) (zipWith (*) cs' (1:cs')) as
+        bs' = zipWith (*) cs' bs
+        cs' = cs ++ repeat 1
+
+-- |Apply an equivalence transformation that sets the partial denominators 
+-- of a 'CF' to the specfied values.  If the input list is too short, the 
+-- rest of the 'CF' will be unscaled.
+setDenominators :: Fractional a => [a] -> CF a -> CF a
+setDenominators denoms orig
+    = gcf b0 (zip as' bs')
+    where
+        (b0, terms) = asGCF orig
+        (as,bs) = unzip terms
+        
+        as' = zipWith (*) as (zipWith (*) cs (1:cs))
+        bs' = zipWith ($) (map const denoms ++ repeat id) bs
+        cs = zipWith (/) bs' bs
+
+-- |Apply an equivalence transformation that sets the partial numerators 
+-- of a 'CF' to the specfied values.  If the input list is too short, the 
+-- rest of the 'CF' will be unscaled.
+setNumerators :: Fractional a => [a] -> CF a -> CF a
+setNumerators numers orig
+    = gcf b0 (zip as' bs')
+    where
+        (b0, terms) = asGCF orig
+        (as,bs) = unzip terms
+        
+        as' = zipWith ($) (map const numers ++ repeat id) as
+        bs' = zipWith (*) bs cs
+        cs = zipWith (/) as' (zipWith (*) as (1:cs))
+
+-- |Computes the even and odd parts, respectively, of a 'CF'.  These are new
+-- 'CF's that have the even-indexed and odd-indexed convergents of the 
+-- original, respectively.
 partitionCF :: Fractional a => CF a -> (CF a, CF a)
 partitionCF orig = case terms of
     []          -> (orig, orig)
@@ -125,48 +170,6 @@ partitionCF orig = case terms of
                 cs = [(-aOdd) * aEven  | (aOdd, aEven) <- pairs alphas]
                 ds = [1 + aOdd + aEven | (aEven, aOdd) <- pairs (tail alphas)]
 
--- |Apply an equivalence transformation, multiplying each partial denominator 
--- with the corresponding element of the supplied list.  If the list is
--- too short, the rest of the 'CF' will be unscaled.
-equiv :: Num a => [a] -> CF a -> CF a
-equiv cs orig
-    = gcf b0 (zip as' bs')
-    where
-        (b0, terms) = asGCF orig
-        (as,bs) = unzip terms
-        
-        as' = zipWith (*) (zipWith (*) cs' (1:cs')) as
-        bs' = zipWith (*) cs' bs
-        cs' = cs ++ repeat 1
-
--- |Apply an equivalence transform that sets the partial denominators of a 'CF'
--- to the specfied values.  If the input list is too short, the rest of 
--- the 'CF' will be unscaled.
-setDenominators :: Fractional a => [a] -> CF a -> CF a
-setDenominators denoms orig
-    = gcf b0 (zip as' bs')
-    where
-        (b0, terms) = asGCF orig
-        (as,bs) = unzip terms
-        
-        as' = zipWith (*) as (zipWith (*) cs (1:cs))
-        bs' = zipWith ($) (map const denoms ++ repeat id) bs
-        cs = zipWith (/) bs' bs
-
--- |Apply an equivalence transform that sets the partial numerators of a 'CF'
--- to the specfied values.  If the input list is too short, the rest of 
--- the 'CF' will be unscaled.
-setNumerators :: Fractional a => [a] -> CF a -> CF a
-setNumerators numers orig
-    = gcf b0 (zip as' bs')
-    where
-        (b0, terms) = asGCF orig
-        (as,bs) = unzip terms
-        
-        as' = zipWith ($) (map const numers ++ repeat id) as
-        bs' = zipWith (*) bs cs
-        cs = zipWith (/) as' (zipWith (*) as (1:cs))
-
 -- |Computes the even part of a 'CF' (that is, a new 'CF' whose convergents are
 -- the even-indexed convergents of the original).
 evenCF :: Fractional a => CF a -> CF a
@@ -183,15 +186,15 @@ oddCF = snd . partitionCF
 -- |Evaluate the convergents of a continued fraction using the fundamental
 -- recurrence formula:
 -- 
--- A_0 = b_0, B_0 = 1
+-- A0 = b0, B0 = 1
 --
--- A_1 = b_1b_0 + a_1,  B_1 = b_1
+-- A1 = b1b0 + a1,  B1 = b1
 -- 
--- A_{n+1} = b_{n+1}A_n + a_{n+1}A_{n-1}
+-- A{n+1} = b{n+1}An + a{n+1}A{n-1}
 --
--- B_{n+1} = b_{n+1}B_n + a_{n+1}B_{n-1}
+-- B{n+1} = b{n+1}Bn + a{n+1}B{n-1}
 --
--- The convergents are then x_n = A_n/B_n
+-- The convergents are then Xn = An/Bn
 convergents :: Fractional a => CF a -> [a]
 convergents orig = drop 1 (zipWith (/) nums denoms)
     where
@@ -203,18 +206,19 @@ convergents orig = drop 1 (zipWith (/) nums denoms)
 -- Only valid if the denominator in the following recurrence for D_i never 
 -- goes to zero.  If this method blows up, try 'modifiedLentz'.
 --
--- D_1 = 1/b1
+-- D1 = 1/b1
 -- 
--- D_i = 1 / (b_i + a_i * D_{i-1})
+-- D{i} = 1 / (b{i} + a{i} * D{i-1})
 -- 
--- dx_1 = a_1/b_1
+-- dx1 = a1 / b1
 -- 
--- dx_i = (b_i * D_i - 1) * dx_{i-1}
+-- dx{i} = (b{i} * D{i} - 1) * dx{i-1}
 -- 
--- x_0 = b_0
+-- x0 = b0
 -- 
--- x_i = x_{i-1} + dx_i
+-- x{i} = x{i-1} + dx{i}
 -- 
+-- The convergents are given by @scanl (+) b0 dxs@
 steed :: Fractional a => CF a -> [a]
 steed (CF  b0 []) = [b0]
 steed (GCF b0 []) = [b0]
@@ -232,6 +236,15 @@ steed orig
 -- Only valid if the denominators in the following recurrence never go to
 -- zero.  If this method blows up, try 'modifiedLentz'.
 --
+-- C1 = b1 + a1 / b0
+--
+-- D1 = 1/b1
+-- 
+-- C{n} = b{n} + a{n} / C{n-1}
+-- 
+-- D{n} = 1 / (b{n} + a{n} * D{n-1})
+-- 
+-- The convergents are given by @scanl (*) b0 (zipWith (*) cs ds)@
 lentz :: Fractional a => CF a -> [a]
 lentz (CF  b0 []) = [b0]
 lentz (GCF b0 []) = [b0]
@@ -249,9 +262,11 @@ lentz orig
 -- |Evaluate the convergents of a continued fraction using Lentz's method,
 -- (see 'lentz') with the additional rule that if a denominator ever goes
 -- to zero, it will be replaced by a (very small) number of your choosing,
--- typically 1e-30 or so.  This modification was proposed by Thompson and 
--- Barnett.  Additionally splits the resulting list of convergents into 
--- sublists, starting a new list every time the \'modification\' is invoked.
+-- typically 1e-30 or so (this modification was proposed by Thompson and 
+-- Barnett).  
+-- 
+-- Additionally splits the resulting list of convergents into sublists, 
+-- starting a new list every time the \'modification\' is invoked.  
 modifiedLentz :: Fractional a => a -> CF a -> [[a]]
 modifiedLentz z (CF  b0 []) = [[b0]]
 modifiedLentz z (GCF b0 []) = [[b0]]
@@ -287,8 +302,9 @@ modifiedLentz z orig
                 (xs:rest)   -> (snd x:xs):rest
             (xs, ys)            -> map snd xs : separate ys
 
--- |Euler's formula for computing @sum (map product (inits xs))@.  Successive
--- convergents of the resulting 'CF' are successive partial sums in the series.
+-- |Euler's formula for computing @sum (map product (tail (inits xs)))@.  
+-- Successive convergents of the resulting 'CF' are successive partial sums
+-- in the series.
 sumPartialProducts :: Num a => [a] -> CF a
 sumPartialProducts [] = cf 0 []
 sumPartialProducts (x:xs) = gcf 0 ((x,1):[(negate x, 1 + x) | x <- xs])
