@@ -17,7 +17,7 @@ description:            A type and some functions for manipulating and
 
 source-repository head
   type: darcs
-  location: http://code.hakell.org/~mokus/continued-fractions
+  location: http://code.haskell.org/~mokus/continued-fractions
 
 Library
   hs-source-dirs:       src
