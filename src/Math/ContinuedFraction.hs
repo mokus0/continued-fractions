@@ -1,4 +1,4 @@
-{-# LANGUAGE ParallelListComp, ViewPatterns #-}
+{-# LANGUAGE ParallelListComp #-}
 module Math.ContinuedFraction
     ( CF
     , cf, gcf
@@ -81,7 +81,7 @@ instance Functor CF where
 -- that all the partial numerators are 1.
 asCF  :: Fractional a => CF a -> (a, [a])
 asCF (CF  b0 cf) = (b0, cf)
-asCF (asGCF -> (b0,cf)) = (b0, zipWith (*) bs cs)
+asCF (GCF b0 cf) = (b0, zipWith (*) bs cs)
     where
         (a:as, bs) = unzip cf
         cs = recip a : [recip (a*c) | c <- cs | a <- as]
@@ -98,12 +98,16 @@ truncateCF n (GCF b0 ab) = GCF b0 (take n ab)
 
 -- |Computes the even and odd parts, respectively, of a 'CF'.
 partitionCF :: Fractional a => CF a -> (CF a, CF a)
-partitionCF orig@(asGCF -> (b0,[]))     = (orig, orig)
-partitionCF (asGCF -> (b0,[(a1,b1)]))   = (final, final)
+partitionCF orig = case terms of
+    []          -> (orig, orig)
+    [(a1,b1)]   -> 
+        let final = cf (b0 + a1/b1) []
+         in (final, final)
+    _           -> (evenPart, oddPart)
     where
-        final = cf (b0 + a1/b1) []
-partitionCF (asGCF -> (b0, unzip -> (as,bs))) = (evenPart, oddPart)
-    where
+        (b0, terms) = asGCF orig
+        (as, bs)    = unzip terms
+        
         pairs (a:b:rest) = (a,b) : pairs rest
         pairs [a] = [(a,0)]
         pairs _ = []
@@ -124,9 +128,12 @@ partitionCF (asGCF -> (b0, unzip -> (as,bs))) = (evenPart, oddPart)
 -- with the corresponding element of the supplied list.  If the list is
 -- too short, the rest of the 'CF' will be unscaled.
 equiv :: Num a => [a] -> CF a -> CF a
-equiv cs (asGCF -> (b0, unzip -> (as,bs)))
+equiv cs orig
     = gcf b0 (zip as' bs')
     where
+        (b0, terms) = asGCF orig
+        (as,bs) = unzip terms
+        
         as' = zipWith (*) (zipWith (*) cs' (1:cs')) as
         bs' = zipWith (*) cs' bs
         cs' = cs ++ repeat 1
@@ -135,9 +142,12 @@ equiv cs (asGCF -> (b0, unzip -> (as,bs)))
 -- to the specfied values.  If the input list is too short, the rest of 
 -- the 'CF' will be unscaled.
 setDenominators :: Fractional a => [a] -> CF a -> CF a
-setDenominators denoms (asGCF -> (b0, unzip -> (as, bs))) 
+setDenominators denoms orig
     = gcf b0 (zip as' bs')
     where
+        (b0, terms) = asGCF orig
+        (as,bs) = unzip terms
+        
         as' = zipWith (*) as (zipWith (*) cs (1:cs))
         bs' = zipWith ($) (map const denoms ++ repeat id) bs
         cs = zipWith (/) bs' bs
@@ -146,9 +156,12 @@ setDenominators denoms (asGCF -> (b0, unzip -> (as, bs)))
 -- to the specfied values.  If the input list is too short, the rest of 
 -- the 'CF' will be unscaled.
 setNumerators :: Fractional a => [a] -> CF a -> CF a
-setNumerators numers (asGCF -> (b0, unzip -> (as, bs))) 
+setNumerators numers orig
     = gcf b0 (zip as' bs')
     where
+        (b0, terms) = asGCF orig
+        (as,bs) = unzip terms
+        
         as' = zipWith ($) (map const numers ++ repeat id) as
         bs' = zipWith (*) bs cs
         cs = zipWith (/) as' (zipWith (*) as (1:cs))
@@ -179,10 +192,11 @@ oddCF = snd . partitionCF
 --
 -- The convergents are then x_n = A_n/B_n
 convergents :: Fractional a => CF a -> [a]
-convergents (asGCF -> (b0, gcf)) = drop 1 (zipWith (/) nums denoms)
+convergents orig = drop 1 (zipWith (/) nums denoms)
     where
-        nums   = 1:b0:[b * x1 + a * x0 | x0:x1:_ <- tails nums   | (a,b) <- gcf]
-        denoms = 0:1 :[b * x1 + a * x0 | x0:x1:_ <- tails denoms | (a,b) <- gcf]
+        (b0, terms) = asGCF orig
+        nums   = 1:b0:[b * x1 + a * x0 | x0:x1:_ <- tails nums   | (a,b) <- terms]
+        denoms = 0:1 :[b * x1 + a * x0 | x0:x1:_ <- tails denoms | (a,b) <- terms]
 
 -- |Evaluate the convergents of a continued fraction using Steed's method.
 -- Only valid if the denominator in the following recurrence for D_i never 
@@ -205,9 +219,11 @@ steed (CF  b0 []) = [b0]
 steed (GCF b0 []) = [b0]
 steed (CF  0 (  a  :rest)) = map (1 /) (steed (CF  a rest))
 steed (GCF 0 ((a,b):rest)) = map (a /) (steed (GCF b rest))
-steed (asGCF -> (b0, (a1,b1):gcf)) 
+steed orig
     = scanl (+) b0 dxs
     where
+        (b0, (a1,b1):gcf) = asGCF orig
+        
         dxs = a1/b1 : [(b * d - 1) * dx  | (a,b) <- gcf | d <- ds | dx <- dxs]
         ds  =  1/b1 : [recip (b + a * d) | (a,b) <- gcf | d <- ds]
 
@@ -220,9 +236,11 @@ lentz (CF  b0 []) = [b0]
 lentz (GCF b0 []) = [b0]
 lentz (CF  0 (  a  :rest)) = map (1 /) (lentz (CF  a rest))
 lentz (GCF 0 ((a,b):rest)) = map (a /) (lentz (GCF b rest))
-lentz (asGCF -> (b0, gcf)) 
+lentz orig 
     = scanl (*) b0 (zipWith (*) cs ds)
     where
+        (b0, gcf) = asGCF orig
+        
         cs = [   b + a/c  | (a,b) <- gcf | c <- b0 : cs]
         ds = [1/(b + a*d) | (a,b) <- gcf | d <- 0  : ds]
 
@@ -238,9 +256,10 @@ modifiedLentz z (CF  b0 []) = [[b0]]
 modifiedLentz z (GCF b0 []) = [[b0]]
 modifiedLentz z (CF  0 (  a  :rest)) = map (map (1 /)) (modifiedLentz z (CF  a rest))
 modifiedLentz z (GCF 0 ((a,b):rest)) = map (map (a /)) (modifiedLentz z (GCF b rest))
-modifiedLentz z (asGCF -> (b0, gcf)) 
+modifiedLentz z orig
     = snd (mapAccumL multSublist b0 (separate cds))
     where
+        (b0, gcf) = asGCF orig
         multSublist b0 cds = let xs = scanl (*) b0 cds in (last xs, xs) 
         
         cds = zipWith (\(xa,xb) (ya,yb) -> (xa || ya, xb * yb)) cs ds
