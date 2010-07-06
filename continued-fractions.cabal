@@ -12,7 +12,12 @@ homepage:               /dev/null
 
 category:               Math, Numerical
 synopsis:               Continued fractions.
-description:            A type and some functions for evaluating continued fractions.
+description:            A type and some functions for manipulating and 
+                        evaluating continued fractions.
+
+source-repository head
+  type: darcs
+  location: http://code.hakell.org/~mokus/continued-fractions
 
 Library
   hs-source-dirs:       src
