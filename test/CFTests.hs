@@ -49,6 +49,18 @@ prop_partition_preserves_convergents cf =
         
         (evenCF, oddCF) = partitionCF cf
 
+prop_evenCF_preserves_last_convergent :: CF Rational -> Bool
+prop_evenCF_preserves_last_convergent orig = origResult == evenResult
+    where
+        origResult = last $ convergents orig
+        evenResult = last $ convergents (evenCF orig)
+
+prop_oddCF_preserves_last_convergent :: CF Rational -> Bool
+prop_oddCF_preserves_last_convergent orig = origResult == oddResult
+    where
+        origResult = last $ convergents orig
+        oddResult  = last $ convergents (oddCF orig)
+
 prop_equiv_preserves_convergents :: [Rational] -> CF Rational -> Bool
 prop_equiv_preserves_convergents cs orig = convergents orig == convergents new
     where
