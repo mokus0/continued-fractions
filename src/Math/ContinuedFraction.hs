@@ -279,8 +279,8 @@ modifiedLentz z orig
         multSublist b0 cds = let xs = scanl (*) b0 cds in (last xs, xs) 
         
         cds = zipWith (\(xa,xb) (ya,yb) -> (xa || ya, xb * yb)) cs ds
-        cs = [reset (b + a/c)            id   | (a,b) <- gcf | c <- b0 : map snd cs]
-        ds = [reset (b + a*d) (\den -> 1/den) | (a,b) <- gcf | d <- 0  : map snd ds]
+        cs = [reset (b + a/c)    id | (a,b) <- gcf | c <- b0 : map snd cs]
+        ds = [reset (b + a*d) recip | (a,b) <- gcf | d <- 0  : map snd ds]
         
         -- The sublist breaking is computed secondarily - initially, 
         -- 'cs' and 'ds' are constructed with this helper function that
