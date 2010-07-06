@@ -15,6 +15,10 @@ synopsis:               Continued fractions.
 description:            A type and some functions for manipulating and 
                         evaluating continued fractions.
 
+tested-with:            GHC == 6.8.3,
+                        GHC == 6.10.4,
+                        GHC == 6.12.1, GHC == 6.12.3
+
 source-repository head
   type: darcs
   location: http://code.haskell.org/~mokus/continued-fractions
