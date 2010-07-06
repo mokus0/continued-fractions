@@ -1,0 +1,20 @@
+name:                   continued-fractions
+version:                0.9
+stability:              provisional
+
+cabal-version:          >= 1.2
+build-type:             Simple
+
+author:                 James Cook <mokus@deepbondi.net>
+maintainer:             James Cook <mokus@deepbondi.net>
+license:                PublicDomain
+homepage:               /dev/null
+
+category:               Math, Numerical
+synopsis:               Continued fractions.
+description:            A type and some functions for evaluating continued fractions.
+
+Library
+  hs-source-dirs:       src
+  exposed-modules:      Math.ContinuedFraction
+  build-depends:        base >= 3 && <5
