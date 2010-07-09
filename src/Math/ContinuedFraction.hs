@@ -16,7 +16,7 @@ module Math.ContinuedFraction
     
     , convergents
     , steed
-    , lentz
+    , lentz, lentzWith
     , modifiedLentz
     
     , sumPartialProducts
@@ -246,17 +246,55 @@ steed orig
 -- 
 -- The convergents are given by @scanl (*) b0 (zipWith (*) cs ds)@
 lentz :: Fractional a => CF a -> [a]
-lentz (CF  b0 []) = [b0]
-lentz (GCF b0 []) = [b0]
-lentz (CF  0 (  a  :rest)) = map (1 /) (lentz (CF  a rest))
-lentz (GCF 0 ((a,b):rest)) = map (a /) (lentz (GCF b rest))
-lentz orig 
-    = scanl (*) b0 (zipWith (*) cs ds)
+lentz = lentzWith id (*) (1/)
+
+-- |Evaluate the convergents of a continued fraction using Lentz's method,
+-- mapping the terms in the final product to a new group before performing
+-- the final multiplications.  A useful group, for example, would be logarithms
+-- under addition.  In @lentzWith f op inv@, the arguments are:
+-- 
+-- * @f@, a group homomorphism (eg, 'log') from {@a@,(*),'recip'} to the group
+--   in which you want to perform the multiplications.
+-- 
+-- * @op@, the group operation (eg., (+)).
+-- 
+-- * @inv@, the group inverse (eg., 'negate').
+-- 
+-- The 'lentz' function is given by the identity homomorphism:
+-- @lentz@ = @lentzWith (*) id recip@, for example.
+-- 
+-- The original motivation for this function is to allow computation of 
+-- the natural log of very large numbers that would overflow with the naive
+-- implementation in 'lentz'.  In this case, the arguments would be 'log', (+),
+-- and 'negate', respectively.
+-- 
+-- In cases where terms of the product can be negative, the following 
+-- definitions could be used instead:
+-- 
+-- > signLog x = (signum x, log (abs x))
+-- > addSignLog (xS,xL) (yS,yL) = (xS*yS, xL+yL)
+-- > negateSignLog (s,l) = (negate s, l)
+{-# INLINE lentzWith #-}
+lentzWith :: Fractional a => (a -> b) -> (b -> b -> b) -> (b -> b) -> CF a -> [b]
+lentzWith f op inv (CF  0 (  a  :rest)) = map inv              (lentzWith f op inv (CF  a rest))
+lentzWith f op inv (GCF 0 ((a,b):rest)) = map (op (f a) . inv) (lentzWith f op inv (GCF b rest))
+lentzWith f op inv c = scanl opF (f b0) (zipWith (*) cs ds)
+   where
+       opF x y = op x (f y)
+       (b0, cs, ds) = lentzRecurrence c
+
+
+lentzRecurrence :: Fractional a => CF a -> (a,[a],[a])
+lentzRecurrence (CF  b0 []) = (b0,[],[])
+lentzRecurrence (GCF b0 []) = (b0,[],[])
+lentzRecurrence orig 
+    | null terms    = error "programming error in Math.ContinuedFraction.lentzRecurrence"
+    | otherwise = (b0, cs, ds)
     where
-        (b0, gcf) = asGCF orig
+        (b0, terms) = asGCF orig
         
-        cs = [   b + a/c  | (a,b) <- gcf | c <- b0 : cs]
-        ds = [1/(b + a*d) | (a,b) <- gcf | d <- 0  : ds]
+        cs = [   b + a/c  | (a,b) <- terms | c <- b0 : cs]
+        ds = [1/(b + a*d) | (a,b) <- terms | d <- 0  : ds]
 
 
 -- |Evaluate the convergents of a continued fraction using Lentz's method,
@@ -304,7 +342,7 @@ modifiedLentz z orig
                 (xs:rest)   -> (snd x:xs):rest
             (xs, ys)            -> map snd xs : separate ys
 
--- |Euler's formula for computing @sum (map product (tail (inits xs)))@.  
+-- |Euler's formula for computing @sum (scanl1 (*) xs)@.  
 -- Successive convergents of the resulting 'CF' are successive partial sums
 -- in the series.
 sumPartialProducts :: Num a => [a] -> CF a

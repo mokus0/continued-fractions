@@ -9,7 +9,7 @@ import Test.QuickCheck
 import Test.Framework (testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 
-default (Integer, Rational)
+default (Integer, Rational, Double)
 
 instance Arbitrary a => Arbitrary (CF a) where
     arbitrary = do
@@ -36,6 +36,7 @@ tests =
     , testGroup "convergents"           convergents_tests
     , testGroup "steed"                 steed_tests
     , testGroup "lentz"                 lentz_tests
+    , testGroup "lentzWith"             lentzWith_tests
     , testGroup "modifiedLentz"         modifiedLentz_tests
     , testGroup "sumPartialProducts"    sumPartialProducts_tests
     ]
@@ -140,7 +141,33 @@ lentz_tests =
     [ testProperty "not null" prop_lentz_not_null
     ]
 
-prop_lentz_not_null = not . null . convergents
+prop_lentz_not_null = not . null . lentz
+
+lentzWith_tests =
+    [ testProperty "not null" prop_lentzWith_not_null
+    , testProperty "lentzWith log agrees with map log . lentz" prop_lentzWith_log_sane
+    ]
+
+prop_lentzWith_not_null = not . null . lentzWith id (*) (1/)
+
+prop_lentzWith_log_sane cf =
+    let signLog x = (signum x, log (abs x))
+        addSignLog (xS,xL) (yS,yL) = (xS*yS, xL+yL)
+        negateSignLog (s,l) = (negate s, l)
+        
+        (sX, x) ~= (sY, y)   
+            = sX == sY 
+                && (absErr <= 1e-16 * max 1 (log n)
+                || relErr  <= 1e-16 * max 1 (log n)
+                || any isNaN [absErr, relErr])
+            where
+                absErr = abs (x-y)
+                relErr = absErr / max (abs x) (abs y)
+        
+        n = genericLength a
+        a = map signLog (lentz cf)
+        b = lentzWith signLog addSignLog negateSignLog cf
+     in and (zipWith (~=) a b)
 
 modifiedLentz_tests =
     [ testProperty "first convergent"   prop_modifiedLentz_first_convergent
