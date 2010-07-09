@@ -268,19 +268,21 @@ lentz orig
 -- Additionally splits the resulting list of convergents into sublists, 
 -- starting a new list every time the \'modification\' is invoked.  
 modifiedLentz :: Fractional a => a -> CF a -> [[a]]
-modifiedLentz z (CF  b0 []) = [[b0]]
-modifiedLentz z (GCF b0 []) = [[b0]]
+modifiedLentz z (CF  b0 [])          = [[b0]]
+modifiedLentz z (GCF b0 [])          = [[b0]]
+modifiedLentz z (GCF b0 ((0,_):_))   = [[b0]]
 modifiedLentz z (CF  0 (  a  :rest)) = map (map (1 /)) (modifiedLentz z (CF  a rest))
 modifiedLentz z (GCF 0 ((a,b):rest)) = map (map (a /)) (modifiedLentz z (GCF b rest))
 modifiedLentz z orig
-    = snd (mapAccumL multSublist b0 (separate cds))
+    | null terms = error "programming error in modifiedLentz implementation"
+    | otherwise  = snd (mapAccumL multSublist b0 (separate cds))
     where
-        (b0, gcf) = asGCF orig
+        (b0, terms) = asGCF orig
         multSublist b0 cds = let xs = scanl (*) b0 cds in (last xs, xs) 
         
         cds = zipWith (\(xa,xb) (ya,yb) -> (xa || ya, xb * yb)) cs ds
-        cs = [reset (b + a/c)    id | (a,b) <- gcf | c <- b0 : map snd cs]
-        ds = [reset (b + a*d) recip | (a,b) <- gcf | d <- 0  : map snd ds]
+        cs = [reset (b + a/c)    id | (a,b) <- terms | c <- b0 : map snd cs]
+        ds = [reset (b + a*d) recip | (a,b) <- terms | d <- 0  : map snd ds]
         
         -- The sublist breaking is computed secondarily - initially, 
         -- 'cs' and 'ds' are constructed with this helper function that

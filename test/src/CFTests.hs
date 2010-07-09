@@ -143,9 +143,14 @@ lentz_tests =
 prop_lentz_not_null = not . null . convergents
 
 modifiedLentz_tests =
-    [ testProperty "not null" prop_modifiedLentz_result_not_null
-    , testProperty "sublists not null" prop_modifiedLentz_sublists_not_null
+    [ testProperty "first convergent"   prop_modifiedLentz_first_convergent
+    , testProperty "not null"           prop_modifiedLentz_result_not_null
+    , testProperty "sublists not null"  prop_modifiedLentz_sublists_not_null
     ]
+
+prop_modifiedLentz_first_convergent x =
+    b0 /= 0 ==> (head . head) (modifiedLentz 1e-30 x) == b0
+    where b0 = fst (asGCF x)
 
 prop_modifiedLentz_sublists_not_null = not . any null . modifiedLentz 1e-30
 
