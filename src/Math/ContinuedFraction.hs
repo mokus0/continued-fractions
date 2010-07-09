@@ -309,7 +309,9 @@ modifiedLentz :: Fractional a => a -> CF a -> [[a]]
 modifiedLentz = modifiedLentzWith id (*) recip
 
 -- |'modifiedLentz' with a group homomorphism (see 'lentzWith', it bears the
--- same relationship to 'lentz' as this function does to 'modifiedLentz').
+-- same relationship to 'lentz' as this function does to 'modifiedLentz',
+-- and solves the same problems).  Alternatively, 'lentzWith' with the same
+-- modification to the recurrence as 'modifiedLentz'.
 {-# INLINE modifiedLentzWith #-}
 modifiedLentzWith :: Fractional a => (a -> b) -> (b -> b -> b) -> (b -> b) -> a -> CF a -> [[b]]
 modifiedLentzWith f op inv z (CF  0 (  a  :rest)) = map (map             inv ) (modifiedLentzWith f op inv z (CF  a rest))
