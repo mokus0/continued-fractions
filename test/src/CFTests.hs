@@ -10,6 +10,7 @@ import Test.Framework (testGroup)
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 
 default (Integer, Rational, Double)
+eps = 2.220446049250313e-16 :: Double
 
 instance Arbitrary a => Arbitrary (CF a) where
     arbitrary = do
@@ -38,6 +39,7 @@ tests =
     , testGroup "lentz"                 lentz_tests
     , testGroup "lentzWith"             lentzWith_tests
     , testGroup "modifiedLentz"         modifiedLentz_tests
+    , testGroup "modifiedLentzWith"     modifiedLentzWith_tests
     , testGroup "sumPartialProducts"    sumPartialProducts_tests
     ]
 
@@ -157,8 +159,8 @@ prop_lentzWith_log_sane cf =
         
         (sX, x) ~= (sY, y)   
             = sX == sY 
-                && (absErr <= 1e-16 * max 1 (log n)
-                || relErr  <= 1e-16 * max 1 (log n)
+                && (absErr <= eps * max 1 n
+                || relErr  <= eps * max 1 n
                 || any isNaN [absErr, relErr])
             where
                 absErr = abs (x-y)
@@ -182,6 +184,30 @@ prop_modifiedLentz_first_convergent x =
 prop_modifiedLentz_sublists_not_null = not . any null . modifiedLentz 1e-30
 
 prop_modifiedLentz_result_not_null = not . null . modifiedLentz 1e-30
+
+modifiedLentzWith_tests =
+    [ testProperty "sanity test with log"   prop_modifiedLentzWith_log_sane
+    ]
+
+prop_modifiedLentzWith_log_sane cf =
+    let signLog x = (signum x, log (abs x))
+        addSignLog (xS,xL) (yS,yL) = (xS*yS, xL+yL)
+        negateSignLog (s,l) = (negate s, l)
+        
+        (sX, x) ~= (sY, y)   
+            = sX == sY 
+                && (absErr <= eps * max 1 n * max 1 m
+                || relErr  <= eps * max 1 n * max 1 m
+                || any isNaN [absErr, relErr])
+            where
+                absErr = abs (x-y)
+                relErr = absErr / max (abs x) (abs y)
+        
+        tiny = 1e-30
+        n = genericLength a; m = genericLength (concat a)
+        a = map (map signLog) (modifiedLentz tiny cf)
+        b = modifiedLentzWith signLog addSignLog negateSignLog tiny cf
+     in and (zipWith (~=) (concat a) (concat b))
 
 sumPartialProducts_tests =
     [ testProperty "preserves partial sums" prop_sumPartialProducts_preserves_partial_sums

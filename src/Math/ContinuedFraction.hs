@@ -17,7 +17,7 @@ module Math.ContinuedFraction
     , convergents
     , steed
     , lentz, lentzWith
-    , modifiedLentz
+    , modifiedLentz, modifiedLentzWith
     
     , sumPartialProducts
     ) where
@@ -246,7 +246,7 @@ steed orig
 -- 
 -- The convergents are given by @scanl (*) b0 (zipWith (*) cs ds)@
 lentz :: Fractional a => CF a -> [a]
-lentz = lentzWith id (*) (1/)
+lentz = lentzWith id (*) recip
 
 -- |Evaluate the convergents of a continued fraction using Lentz's method,
 -- mapping the terms in the final product to a new group before performing
@@ -306,19 +306,41 @@ lentzRecurrence orig
 -- Additionally splits the resulting list of convergents into sublists, 
 -- starting a new list every time the \'modification\' is invoked.  
 modifiedLentz :: Fractional a => a -> CF a -> [[a]]
-modifiedLentz z (CF  b0 [])          = [[b0]]
-modifiedLentz z (GCF b0 [])          = [[b0]]
-modifiedLentz z (GCF b0 ((0,_):_))   = [[b0]]
-modifiedLentz z (CF  0 (  a  :rest)) = map (map (1 /)) (modifiedLentz z (CF  a rest))
-modifiedLentz z (GCF 0 ((a,b):rest)) = map (map (a /)) (modifiedLentz z (GCF b rest))
-modifiedLentz z orig
-    | null terms = error "programming error in modifiedLentz implementation"
-    | otherwise  = snd (mapAccumL multSublist b0 (separate cds))
+modifiedLentz = modifiedLentzWith id (*) recip
+
+-- |'modifiedLentz' with a group homomorphism (see 'lentzWith', it bears the
+-- same relationship to 'lentz' as this function does to 'modifiedLentz').
+{-# INLINE modifiedLentzWith #-}
+modifiedLentzWith :: Fractional a => (a -> b) -> (b -> b -> b) -> (b -> b) -> a -> CF a -> [[b]]
+modifiedLentzWith f op inv z (CF  0 (  a  :rest)) = map (map             inv ) (modifiedLentzWith f op inv z (CF  a rest))
+modifiedLentzWith f op inv z (GCF 0 ((a,b):rest)) = map (map (op (f a) . inv)) (modifiedLentzWith f op inv z (GCF b rest))
+modifiedLentzWith f op inv z orig = separate (scanl opF (False, f b0) cds)
+    where
+        (b0, cs, ds) = modifiedLentzRecurrence z orig
+        cds = zipWith mult cs ds
+        
+        mult (xa,xb) (ya,yb) = (xa || ya, xb * yb)
+        opF  (xa,xb) (ya,yb) = (xa || ya, op xb (f yb))
+        
+        -- |Takes a list of (Bool,a) and breaks it into sublists, starting
+        -- a new one every time it encounters (True,_).
+        separate [] = []
+        separate xs = case break fst xs of
+            ([], x:xs)  -> case separate xs of
+                []          -> [[snd x]]
+                (xs:rest)   -> (snd x:xs):rest
+            (xs, ys)            -> map snd xs : separate ys
+
+modifiedLentzRecurrence :: Fractional a => a -> CF a -> (a,[(Bool, a)],[(Bool, a)])
+modifiedLentzRecurrence z (CF  b0 [])          = (b0, [], [])
+modifiedLentzRecurrence z (GCF b0 [])          = (b0, [], [])
+modifiedLentzRecurrence z (GCF b0 ((0,_):_))   = (b0, [], [])
+modifiedLentzRecurrence z orig
+    | null terms = error "programming error in Math.ContinuedFraction.modifiedLentzRecurrence"
+    | otherwise  = (b0, cs, ds)
     where
         (b0, terms) = asGCF orig
-        multSublist b0 cds = let xs = scanl (*) b0 cds in (last xs, xs) 
         
-        cds = zipWith (\(xa,xb) (ya,yb) -> (xa || ya, xb * yb)) cs ds
         cs = [reset (b + a/c)    id | (a,b) <- terms | c <- b0 : map snd cs]
         ds = [reset (b + a*d) recip | (a,b) <- terms | d <- 0  : map snd ds]
         
@@ -331,16 +353,7 @@ modifiedLentz z orig
         reset x f
             | x == 0    = (True,  f z)
             | otherwise = (False, f x)
-        
-        -- |Takes a list of (Bool,a) and breaks it into sublists, starting
-        -- a new one every time it encounters (True,_).
-        separate :: [(Bool,a)] -> [[a]]
-        separate [] = []
-        separate xs = case break fst xs of
-            ([], x:xs)  -> case separate xs of
-                []          -> [[snd x]]
-                (xs:rest)   -> (snd x:xs):rest
-            (xs, ys)            -> map snd xs : separate ys
+
 
 -- |Euler's formula for computing @sum (scanl1 (*) xs)@.  
 -- Successive convergents of the resulting 'CF' are successive partial sums
