@@ -260,16 +260,17 @@ lentz = lentzWith id (*) recip
 -- 
 -- * @inv@, the group inverse (eg., 'negate').
 -- 
--- The 'lentz' function is given by the identity homomorphism:
--- @lentz@ = @lentzWith (*) id recip@, for example.
+-- The 'lentz' function, for example, is given by the identity homomorphism:
+-- @lentz@ = @lentzWith id (*) recip@.
 -- 
 -- The original motivation for this function is to allow computation of 
 -- the natural log of very large numbers that would overflow with the naive
 -- implementation in 'lentz'.  In this case, the arguments would be 'log', (+),
 -- and 'negate', respectively.
 -- 
--- In cases where terms of the product can be negative, the following 
--- definitions could be used instead:
+-- In cases where terms of the product can be negative (i.e., the sequence of
+-- convergents contains negative values), the following definitions could 
+-- be used instead:
 -- 
 -- > signLog x = (signum x, log (abs x))
 -- > addSignLog (xS,xL) (yS,yL) = (xS*yS, xL+yL)
