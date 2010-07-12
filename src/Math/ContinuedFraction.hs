@@ -327,11 +327,8 @@ modifiedLentzWith f op inv z orig = separate (scanl opF (False, f b0) cds)
         -- |Takes a list of (Bool,a) and breaks it into sublists, starting
         -- a new one every time it encounters (True,_).
         separate [] = []
-        separate xs = case break fst xs of
-            ([], x:xs)  -> case separate xs of
-                []          -> [[snd x]]
-                (xs:rest)   -> (snd x:xs):rest
-            (xs, ys)            -> map snd xs : separate ys
+        separate ((_,x):xs) = case break fst xs of
+            (xs, ys) -> (x:map snd xs) : separate ys
 
 modifiedLentzRecurrence :: Fractional a => a -> CF a -> (a,[(Bool, a)],[(Bool, a)])
 modifiedLentzRecurrence z (CF  b0 [])          = (b0, [], [])
