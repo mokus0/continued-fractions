@@ -285,10 +285,8 @@ lentzWith f op inv c = scanl opF (f b0) (zipWith (*) cs ds)
 
 
 lentzRecurrence :: Fractional a => CF a -> (a,[a],[a])
-lentzRecurrence (CF  b0 []) = (b0,[],[])
-lentzRecurrence (GCF b0 []) = (b0,[],[])
 lentzRecurrence orig 
-    | null terms    = error "programming error in Math.ContinuedFraction.lentzRecurrence"
+    | null terms    = (b0,[],[])
     | otherwise = (b0, cs, ds)
     where
         (b0, terms) = asGCF orig
@@ -331,11 +329,8 @@ modifiedLentzWith f op inv z orig = separate (scanl opF (False, f b0) cds)
             (xs, ys) -> (x:map snd xs) : separate ys
 
 modifiedLentzRecurrence :: Fractional a => a -> CF a -> (a,[(Bool, a)],[(Bool, a)])
-modifiedLentzRecurrence z (CF  b0 [])          = (b0, [], [])
-modifiedLentzRecurrence z (GCF b0 [])          = (b0, [], [])
-modifiedLentzRecurrence z (GCF b0 ((0,_):_))   = (b0, [], [])
 modifiedLentzRecurrence z orig
-    | null terms = error "programming error in Math.ContinuedFraction.modifiedLentzRecurrence"
+    | null terms = (b0, [], [])
     | otherwise  = (b0, cs, ds)
     where
         (b0, terms) = asGCF orig
