@@ -285,6 +285,7 @@ lentzWith f op inv c = scanl opF (f b0) (zipWith (*) cs ds)
        (b0, cs, ds) = lentzRecurrence c
 
 
+-- precondition: b0 /= 0
 lentzRecurrence :: Fractional a => CF a -> (a,[a],[a])
 lentzRecurrence orig 
     | null terms    = (b0,[],[])
@@ -329,6 +330,7 @@ modifiedLentzWith f op inv z orig = separate (scanl opF (False, f b0) cds)
         separate ((_,x):xs) = case break fst xs of
             (xs, ys) -> (x:map snd xs) : separate ys
 
+-- precondition: b0 /= 0
 modifiedLentzRecurrence :: Fractional a => a -> CF a -> (a,[(Bool, a)],[(Bool, a)])
 modifiedLentzRecurrence z orig
     | null terms = (b0, [], [])
