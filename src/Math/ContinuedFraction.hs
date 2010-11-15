@@ -274,7 +274,7 @@ lentz = lentzWith id (*) recip
 -- 
 -- > signLog x = (signum x, log (abs x))
 -- > addSignLog (xS,xL) (yS,yL) = (xS*yS, xL+yL)
--- > negateSignLog (s,l) = (negate s, l)
+-- > negateSignLog (s,l) = (s, negate l)
 {-# INLINE lentzWith #-}
 lentzWith :: Fractional a => (a -> b) -> (b -> b -> b) -> (b -> b) -> CF a -> [b]
 lentzWith f op inv (CF  0 (  a  :rest)) = map inv              (lentzWith f op inv (CF  a rest))
