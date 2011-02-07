@@ -34,6 +34,13 @@ import Data.List (tails, mapAccumL)
 -- >     = CFZero               -- eval CFZero          = 0
 -- >     | CFAdd    a (CF a)    -- eval (CFAdd    b x) =      b + eval x
 -- >     | CFCont a a (CF a)    -- eval (CFCont a b x) = a / (b + eval x)
+-- 
+-- Or perhaps Bill Gosper's "∞-centered" representation:
+-- 
+-- > data CF a
+-- >     = CFInfinity           -- eval CFInfinity     = ∞
+-- >     | CFCont a a (CF a)    -- eval (CFCont p q x) = p + q / eval x
+-- 
 
 -- |A continued fraction.  Constructed by 'cf' or 'gcf'.
 data CF a 
