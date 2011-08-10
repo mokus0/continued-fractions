@@ -1,5 +1,5 @@
 name:                   continued-fractions
-version:                0.9.1.0
+version:                0.9.1.1
 stability:              provisional
 
 cabal-version:          >= 1.6
@@ -27,3 +27,6 @@ Library
   hs-source-dirs:       src
   exposed-modules:      Math.ContinuedFraction
   build-depends:        base >= 3 && <5
+  if impl(ghc >= 7.2)
+    ghc-options:        -trust base
+    extensions:         Safe
