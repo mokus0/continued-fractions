@@ -99,7 +99,7 @@ asCF (GCF b0 cf) = (b0, zipWith (*) bs cs)
         cs = recip a : [recip (a*c) | c <- cs | a <- as]
 
 -- |Extract all the partial numerators and partial denominators of a 'CF'.
-asGCF :: Num a => CF a -> (a,[(a,a)])
+asGCF :: (Num a, Eq a) => CF a -> (a,[(a,a)])
 asGCF (CF  b0  cf) = (b0, [(1, b) | b <- cf])
 asGCF (GCF b0 gcf) = (b0, takeWhile ((/=0).fst) gcf)
 
@@ -112,7 +112,7 @@ truncateCF n (GCF b0 ab) = GCF b0 (take n ab)
 -- with the corresponding element of the supplied list and transforming 
 -- subsequent partial numerators and denominators as necessary.  If the list
 -- is too short, the rest of the 'CF' will be unscaled.
-equiv :: Num a => [a] -> CF a -> CF a
+equiv :: (Num a, Eq a) => [a] -> CF a -> CF a
 equiv cs orig
     = gcf b0 (zip as' bs')
     where
@@ -126,7 +126,7 @@ equiv cs orig
 -- |Apply an equivalence transformation that sets the partial denominators 
 -- of a 'CF' to the specfied values.  If the input list is too short, the 
 -- rest of the 'CF' will be unscaled.
-setDenominators :: Fractional a => [a] -> CF a -> CF a
+setDenominators :: (Fractional a, Eq a) => [a] -> CF a -> CF a
 setDenominators denoms orig
     = gcf b0 (zip as' bs')
     where
@@ -140,7 +140,7 @@ setDenominators denoms orig
 -- |Apply an equivalence transformation that sets the partial numerators 
 -- of a 'CF' to the specfied values.  If the input list is too short, the 
 -- rest of the 'CF' will be unscaled.
-setNumerators :: Fractional a => [a] -> CF a -> CF a
+setNumerators :: (Fractional a, Eq a) => [a] -> CF a -> CF a
 setNumerators numers orig
     = gcf b0 (zip as' bs')
     where
@@ -154,7 +154,7 @@ setNumerators numers orig
 -- |Computes the even and odd parts, respectively, of a 'CF'.  These are new
 -- 'CF's that have the even-indexed and odd-indexed convergents of the 
 -- original, respectively.
-partitionCF :: Fractional a => CF a -> (CF a, CF a)
+partitionCF :: (Fractional a, Eq a) => CF a -> (CF a, CF a)
 partitionCF orig = case terms of
     []          -> (orig, orig)
     [(a1,b1)]   -> 
@@ -183,12 +183,12 @@ partitionCF orig = case terms of
 
 -- |Computes the even part of a 'CF' (that is, a new 'CF' whose convergents are
 -- the even-indexed convergents of the original).
-evenCF :: Fractional a => CF a -> CF a
+evenCF :: (Fractional a, Eq a) => CF a -> CF a
 evenCF = fst . partitionCF
 
 -- |Computes the odd part of a 'CF' (that is, a new 'CF' whose convergents are
 -- the odd-indexed convergents of the original).
-oddCF :: Fractional a => CF a -> CF a
+oddCF :: (Fractional a, Eq a) => CF a -> CF a
 oddCF = snd . partitionCF
 
 
@@ -206,7 +206,7 @@ oddCF = snd . partitionCF
 -- B{n+1} = b{n+1}Bn + a{n+1}B{n-1}
 --
 -- The convergents are then Xn = An/Bn
-convergents :: Fractional a => CF a -> [a]
+convergents :: (Fractional a, Eq a) => CF a -> [a]
 convergents orig = drop 1 (zipWith (/) nums denoms)
     where
         (b0, terms) = asGCF orig
@@ -230,7 +230,7 @@ convergents orig = drop 1 (zipWith (/) nums denoms)
 -- x{i} = x{i-1} + dx{i}
 -- 
 -- The convergents are given by @scanl (+) b0 dxs@
-steed :: Fractional a => CF a -> [a]
+steed :: (Fractional a, Eq a) => CF a -> [a]
 steed (CF  b0 []) = [b0]
 steed (GCF b0 []) = [b0]
 steed (CF  0 (  a  :rest)) = map (1 /) (steed (CF  a rest))
@@ -256,7 +256,7 @@ steed orig
 -- D{n} = 1 / (b{n} + a{n} * D{n-1})
 -- 
 -- The convergents are given by @scanl (*) b0 (zipWith (*) cs ds)@
-lentz :: Fractional a => CF a -> [a]
+lentz :: (Fractional a, Eq a) => CF a -> [a]
 lentz = lentzWith id (*) recip
 
 -- |Evaluate the convergents of a continued fraction using Lentz's method,
@@ -287,7 +287,7 @@ lentz = lentzWith id (*) recip
 -- > addSignLog (xS,xL) (yS,yL) = (xS*yS, xL+yL)
 -- > negateSignLog (s,l) = (s, negate l)
 {-# INLINE lentzWith #-}
-lentzWith :: Fractional a => (a -> b) -> (b -> b -> b) -> (b -> b) -> CF a -> [b]
+lentzWith :: (Fractional a, Eq a) => (a -> b) -> (b -> b -> b) -> (b -> b) -> CF a -> [b]
 lentzWith f op inv (CF  0 (  a  :rest)) = map inv              (lentzWith f op inv (CF  a rest))
 lentzWith f op inv (GCF 0 ((a,b):rest)) = map (op (f a) . inv) (lentzWith f op inv (GCF b rest))
 lentzWith f op inv c = scanl opF (f b0) (zipWith (*) cs ds)
@@ -297,7 +297,7 @@ lentzWith f op inv c = scanl opF (f b0) (zipWith (*) cs ds)
 
 
 -- precondition: b0 /= 0
-lentzRecurrence :: Fractional a => CF a -> (a,[a],[a])
+lentzRecurrence :: (Fractional a, Eq a) => CF a -> (a,[a],[a])
 lentzRecurrence orig 
     | null terms    = (b0,[],[])
     | otherwise = (b0, cs, ds)
@@ -316,7 +316,7 @@ lentzRecurrence orig
 -- 
 -- Additionally splits the resulting list of convergents into sublists, 
 -- starting a new list every time the \'modification\' is invoked.  
-modifiedLentz :: Fractional a => a -> CF a -> [[a]]
+modifiedLentz :: (Fractional a, Eq a) => a -> CF a -> [[a]]
 modifiedLentz = modifiedLentzWith id (*) recip
 
 -- |'modifiedLentz' with a group homomorphism (see 'lentzWith', it bears the
@@ -324,7 +324,7 @@ modifiedLentz = modifiedLentzWith id (*) recip
 -- and solves the same problems).  Alternatively, 'lentzWith' with the same
 -- modification to the recurrence as 'modifiedLentz'.
 {-# INLINE modifiedLentzWith #-}
-modifiedLentzWith :: Fractional a => (a -> b) -> (b -> b -> b) -> (b -> b) -> a -> CF a -> [[b]]
+modifiedLentzWith :: (Fractional a, Eq a) => (a -> b) -> (b -> b -> b) -> (b -> b) -> a -> CF a -> [[b]]
 modifiedLentzWith f op inv z (CF  0 (  a  :rest)) = map (map             inv ) (modifiedLentzWith f op inv z (CF  a rest))
 modifiedLentzWith f op inv z (GCF 0 ((a,b):rest)) = map (map (op (f a) . inv)) (modifiedLentzWith f op inv z (GCF b rest))
 modifiedLentzWith f op inv z orig = separate (scanl opF (False, f b0) cds)
@@ -342,7 +342,7 @@ modifiedLentzWith f op inv z orig = separate (scanl opF (False, f b0) cds)
             (xs, ys) -> (x:map snd xs) : separate ys
 
 -- precondition: b0 /= 0
-modifiedLentzRecurrence :: Fractional a => a -> CF a -> (a,[(Bool, a)],[(Bool, a)])
+modifiedLentzRecurrence :: (Fractional a, Eq a) => a -> CF a -> (a,[(Bool, a)],[(Bool, a)])
 modifiedLentzRecurrence z orig
     | null terms = (b0, [], [])
     | otherwise  = (b0, cs, ds)
