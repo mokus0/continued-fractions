@@ -22,8 +22,8 @@ tested-with:            GHC == 6.8.3,
                         GHC == 7.2.1
 
 source-repository head
-  type: darcs
-  location: http://code.haskell.org/~mokus/continued-fractions
+  type:                 git
+  location:             https://github.com/mokus0/continued-fractions.git
 
 Library
   hs-source-dirs:       src
