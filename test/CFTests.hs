@@ -19,12 +19,12 @@ instance Arbitrary a => Arbitrary (CF a) where
             then liftA2 cf arbitrary arbitrary
             else liftA2 gcf arbitrary arbitrary
 
-instance (CoArbitrary a, Num a) => CoArbitrary (CF a) where
+instance (CoArbitrary a, Num a, Eq a) => CoArbitrary (CF a) where
     coarbitrary cf = coarbitrary b0 . coarbitrary terms
         where
             (b0, terms) = asGCF cf
 
-tests = 
+cfTests = 
     [ testGroup "asCF"                  asCF_tests
     , testGroup "asGCF"                 asGCF_tests
     , testGroup "truncateCF"            truncateCF_tests
